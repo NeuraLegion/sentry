@@ -100,3 +100,24 @@ class SentryAppInstallationExternalRequestsEndpointTest(APITestCase):
         response = self.client.get(url, format="json")
         assert response.status_code == 400
         assert response.data["detail"] == "projectId must be an integer"
+
+    def test_absolute_uri_returns_400(self) -> None:
+        self.login_as(user=self.user)
+        url = self.url + "?uri=https://evil.com/get-projects"
+        response = self.client.get(url, format="json")
+        assert response.status_code == 400
+        assert response.data["detail"] == "uri must be a safe relative path"
+
+    def test_scheme_relative_uri_returns_400(self) -> None:
+        self.login_as(user=self.user)
+        url = self.url + "?uri=//evil.com/get-projects"
+        response = self.client.get(url, format="json")
+        assert response.status_code == 400
+        assert response.data["detail"] == "uri must be a safe relative path"
+
+    def test_path_traversal_uri_returns_400(self) -> None:
+        self.login_as(user=self.user)
+        url = self.url + "?uri=/../../evil"
+        response = self.client.get(url, format="json")
+        assert response.status_code == 400
+        assert response.data["detail"] == "uri must be a safe relative path"

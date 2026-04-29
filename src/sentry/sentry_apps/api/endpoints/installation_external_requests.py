@@ -1,5 +1,6 @@
 import logging
 from typing import Any
+from urllib.parse import urlsplit
 
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -14,6 +15,24 @@ from sentry.sentry_apps.services.cell import sentry_app_cell_service
 logger = logging.getLogger("sentry.sentry-apps")
 
 
+def _validate_select_request_uri(uri: str) -> bool:
+    # Only allow relative paths that cannot override scheme/host or perform
+    # path traversal. This preserves the existing integration contract where
+    # apps provide a webhook path like "/get-projects".
+    parsed = urlsplit(uri)
+
+    if parsed.scheme or parsed.netloc:
+        return False
+
+    if uri.startswith("//"):
+        return False
+
+    if ".." in parsed.path:
+        return False
+
+    return parsed.path.startswith("/")
+
+
 @control_silo_endpoint
 class SentryAppInstallationExternalRequestsEndpoint(SentryAppInstallationBaseEndpoint):
     owner = ApiOwner.INTEGRATIONS
@@ -25,6 +44,9 @@ class SentryAppInstallationExternalRequestsEndpoint(SentryAppInstallationBaseEnd
         uri = request.GET.get("uri")
         if not uri:
             return Response({"detail": "uri query parameter is required"}, status=400)
+
+        if not _validate_select_request_uri(uri):
+            return Response({"detail": "uri must be a safe relative path"}, status=400)
 
         if not request.user.is_authenticated:
             return Response({"detail": "Authentication credentials were not provided."}, status=401)
@@ -41,7 +63,7 @@ class SentryAppInstallationExternalRequestsEndpoint(SentryAppInstallationBaseEnd
         result = sentry_app_cell_service.get_select_options(
             organization_id=installation.organization_id,
             installation=installation,
-            uri=request.GET.get("uri"),
+            uri=uri,
             project_id=project_id,
             query=request.GET.get("query"),
             dependent_data=request.GET.get("dependentData"),
