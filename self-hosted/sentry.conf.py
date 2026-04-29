@@ -180,6 +180,9 @@ SENTRY_WEB_HOST = "0.0.0.0"
 SENTRY_WEB_PORT = 9000
 SENTRY_WEB_OPTIONS = {
     # 'workers': 1,  # the number of web workers
+    # Reject HTTP OPTIONS responses at the application infrastructure layer to
+    # avoid disclosure of supported methods.
+    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
 }
 
 ###############
