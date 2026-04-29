@@ -1,0 +1,65 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.bright
+    command: ["run", "web"]
+    ports:
+      - "9000:9000"
+    environment:
+      RAILS_ENV: production
+      NODE_ENV: production
+      PYTHONUNBUFFERED: "1"
+      SENTRY_CONF: /etc/sentry
+      GRPC_POLL_STRATEGY: epoll1
+      DATABASE_URL: postgres://postgres:postgres@db:5432/sentry
+      REDIS_URL: redis://redis:6379/0
+      SENTRY_POSTGRES_HOST: db
+      SENTRY_POSTGRES_PORT: "5432"
+      SENTRY_DB_NAME: sentry
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: postgres
+      SENTRY_REDIS_HOST: redis
+      SENTRY_REDIS_PORT: "6379"
+      SENTRY_SECRET_KEY: "insecure-dev-secret-key-change-me-1234567890"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sentry
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  db-data:
+  redis-data:
