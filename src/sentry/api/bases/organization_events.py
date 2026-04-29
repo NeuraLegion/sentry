@@ -107,6 +107,43 @@ def resolve_axis_column(
 class OrganizationEventsEndpointBase(OrganizationEndpoint):
     owner = ApiOwner.DATA_BROWSING
 
+    # Only expose a safe subset of fields to clients. This prevents callers from
+    # using the `field` parameter to select arbitrary columns and receiving
+    # excessive or sensitive data in the response.
+    SAFE_EVENT_FIELDS: frozenset[str] = frozenset(
+        {
+            "event_id",
+            "title",
+            "transaction",
+            "timestamp",
+            "project",
+            "project.id",
+            "project.name",
+            "issue",
+            "issue.id",
+            "message",
+            "level",
+            "platform",
+            "environment",
+            "user",
+            "user.id",
+            "user.email",
+            "user.ip",
+            "device",
+            "release",
+            "dist",
+            "culprit",
+            "location",
+            "sdk.name",
+            "sdk.version",
+            "transaction.status",
+            "status",
+            "duration",
+            "count()",
+            "count_unique(user)",
+        }
+    )
+
     def has_feature(self, organization: Organization, request: Request) -> bool:
         return (
             features.has("organizations:discover-basic", organization, actor=request.user)
@@ -124,14 +161,27 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         """equations have a prefix so that they can be easily included alongside our existing fields"""
         return [
             strip_equation(field)
-            for field in request.GET.getlist(param_name)[:]
+            for field in self.get_field_list(organization, request, param_name=param_name)
             if is_equation(field)
         ]
 
     def get_field_list(
         self, organization: Organization, request: Request, param_name: str = "field"
     ) -> list[str]:
-        return [field for field in request.GET.getlist(param_name)[:] if not is_equation(field)]
+        requested_fields = request.GET.getlist(param_name)[:]
+        allowed_fields: list[str] = []
+
+        for field in requested_fields:
+            if is_equation(field):
+                # Equation fields are handled separately by get_equation_list().
+                continue
+
+            if field not in self.SAFE_EVENT_FIELDS:
+                raise ParseError(detail=f"field `{field}` is not supported")
+
+            allowed_fields.append(field)
+
+        return allowed_fields
 
     def get_teams(self, request: Request, organization: Organization) -> list[Team]:
         if not request.user:
@@ -163,7 +213,7 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         organization: Organization,
         quantize_date_params: bool = True,
     ) -> SnubaParams:
-        """Returns params to make snuba queries with"""
+        """Returns params to make Snuba queries with"""
         with sentry_sdk.start_span(op="discover.endpoint", name="filter_params(dataclass)"):
             if (
                 len(self.get_field_list(organization, request))
