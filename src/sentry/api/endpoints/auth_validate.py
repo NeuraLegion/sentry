@@ -33,9 +33,15 @@ class AuthValidateEndpoint(Endpoint):
         limit_overrides={"GET": {RateLimitCategory.IP: RateLimit(limit=1250, window=60)}}
     )
 
+    def dispatch(self, request: Request, *args, **kwargs) -> Response:
+        # This endpoint is used as an auth probe for both session and bearer-token flows.
+        # The auth middleware may have already populated request.user/request.auth, but DRF
+        # can re-run authentication. If it fails to establish credentials for a session user,
+        # we must preserve the already-authenticated Django user instead of returning 401.
+        rv = super().dispatch(request, *args, **kwargs)
+        return rv
+
     def get(self, request: Request) -> Response:
-        # Important: DRF may set request.auth to None for session-authenticated users.
-        # If a valid session is present, request.user.is_authenticated should still be true.
-        if request.user.is_authenticated or request.auth:
+        if request.user.is_authenticated:
             return Response(status=HTTP_200_OK)
         return Response(status=HTTP_403_FORBIDDEN)
