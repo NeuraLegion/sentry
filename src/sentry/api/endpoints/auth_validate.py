@@ -34,6 +34,8 @@ class AuthValidateEndpoint(Endpoint):
     )
 
     def get(self, request: Request) -> Response:
-        if request.auth or request.user.is_authenticated:
+        # Important: DRF may set request.auth to None for session-authenticated users.
+        # If a valid session is present, request.user.is_authenticated should still be true.
+        if request.user.is_authenticated or request.auth:
             return Response(status=HTTP_200_OK)
         return Response(status=HTTP_403_FORBIDDEN)
