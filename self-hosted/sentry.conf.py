@@ -153,7 +153,7 @@ SENTRY_QUOTAS = "sentry.quotas.redis.RedisQuota"
 # TSDB #
 ########
 
-# The TSDB is used for building charts as well as making things like per-rate
+# The TSDB is used for building charts as well as making things like rate
 # alerts possible.
 
 SENTRY_TSDB = "sentry.tsdb.redissnuba.RedisSnubaTSDB"
@@ -179,6 +179,10 @@ SENTRY_DIGESTS = "sentry.digests.backends.redis.RedisBackend"
 SENTRY_WEB_HOST = "0.0.0.0"
 SENTRY_WEB_PORT = 9000
 SENTRY_WEB_OPTIONS = {}
+
+# Preserve normal HTTP method handling so Django auth/login and CSRF flows work.
+# The deployment may harden method disclosure at the proxy layer, but the app
+# itself must continue to answer OPTIONS/HEAD where Django expects it.
 
 ###############
 # Mail Server #
