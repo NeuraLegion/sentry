@@ -3,7 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.bright
-    command: ["run", "web"]
+    # Use explicit env vars instead of inline args so the entrypoint doesn't misparse
+    # a hidden suffix into the Sentry DSN/port configuration.
+    command: ["sentry", "run", "web"]
     ports:
       - "9000:9000"
     environment:

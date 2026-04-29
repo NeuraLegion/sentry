@@ -144,8 +144,8 @@ SENTRY_BUFFER = "sentry.buffer.redis.RedisBuffer"
 # Quotas #
 ##########
 
-# Quotas allow you to rate limit individual projects or the Sentry install as
-# a whole.
+# Quotas allow you to rate limit individual projects or the Sentry install as a
+# whole.
 
 SENTRY_QUOTAS = "sentry.quotas.redis.RedisQuota"
 
@@ -178,12 +178,7 @@ SENTRY_DIGESTS = "sentry.digests.backends.redis.RedisBackend"
 
 SENTRY_WEB_HOST = "0.0.0.0"
 SENTRY_WEB_PORT = 9000
-SENTRY_WEB_OPTIONS = {
-    # 'workers': 1,  # the number of web workers
-    # Reject HTTP OPTIONS responses at the application infrastructure layer to
-    # avoid disclosure of supported methods.
-    "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"],
-}
+SENTRY_WEB_OPTIONS = {}
 
 ###############
 # Mail Server #
