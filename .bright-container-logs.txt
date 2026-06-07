@@ -1,0 +1,95 @@
+=== sentry-app-1 ===
+* Unknown config option found: 'system.rate-limit'
+* Unknown config option found: 'system.rate-limit-duration'
+* Unknown config option found: 'system.auth-rate-limit'
+* Unknown config option found: 'system.auth-rate-limit-window'
+Traceback (most recent call last):
+  File [35m"/.venv/bin/sentry"[0m, line [35m4[0m, in [35m<module>[0m
+    raise SystemExit([31mmain[0m[1;31m()[0m)
+                     [31m~~~~[0m[1;31m^^[0m
+  File [35m"/usr/src/sentry/src/sentry/runner/main.py"[0m, line [35m146[0m, in [35mmain[0m
+    [31mfunc[0m[1;31m(**kwargs)[0m
+    [31m~~~~[0m[1;31m^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m1442[0m, in [35m__call__[0m
+    return [31mself.main[0m[1;31m(*args, **kwargs)[0m
+           [31m~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m1363[0m, in [35mmain[0m
+    rv = self.invoke(ctx)
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m1830[0m, in [35minvoke[0m
+    return _process_result([31msub_ctx.command.invoke[0m[1;31m(sub_ctx)[0m)
+                           [31m~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m1830[0m, in [35minvoke[0m
+    return _process_result([31msub_ctx.command.invoke[0m[1;31m(sub_ctx)[0m)
+                           [31m~~~~~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m1226[0m, in [35minvoke[0m
+    return [31mctx.invoke[0m[1;31m(self.callback, **ctx.params)[0m
+           [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m794[0m, in [35minvoke[0m
+    return callback(*args, **kwargs)
+  File [35m"/.venv/lib/python3.13/site-packages/click/decorators.py"[0m, line [35m34[0m, in [35mnew_func[0m
+    return f(get_current_context(), *args, **kwargs)
+  File [35m"/usr/src/sentry/src/sentry/runner/decorators.py"[0m, line [35m82[0m, in [35minner[0m
+    return [31mctx.invoke[0m[1;31m(f, *args, **kwargs)[0m
+           [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/click/core.py"[0m, line [35m794[0m, in [35minvoke[0m
+    return callback(*args, **kwargs)
+  File [35m"/.venv/lib/python3.13/site-packages/click/decorators.py"[0m, line [35m34[0m, in [35mnew_func[0m
+    return f(get_current_context(), *args, **kwargs)
+  File [35m"/usr/src/sentry/src/sentry/runner/decorators.py"[0m, line [35m33[0m, in [35minner[0m
+    [31mconfigure[0m[1;31m()[0m
+    [31m~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"/usr/src/sentry/src/sentry/runner/__init__.py"[0m, line [35m33[0m, in [35mconfigure[0m
+    [31m_configure[0m[1;31m(ctx, py, yaml, skip_service_validation)[0m
+    [31m~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/usr/src/sentry/src/sentry/runner/settings.py"[0m, line [35m118[0m, in [35mconfigure[0m
+    [31minitialize_app[0m[1;31m([0m
+    [31m~~~~~~~~~~~~~~[0m[1;31m^[0m
+        [1;31m{"config_path": py, "settings": settings, "options": yaml},[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+        [1;31mskip_service_validation=skip_service_validation,[0m
+        [1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1;31m)[0m
+    [1;31m^[0m
+  File [35m"/usr/src/sentry/src/sentry/runner/initializer.py"[0m, line [35m364[0m, in [35minitialize_app[0m
+    [31mconfigure_sdk[0m[1;31m()[0m
+    [31m~~~~~~~~~~~~~[0m[1;31m^^[0m
+  File [35m"/usr/src/sentry/src/sentry/utils/sdk.py"[0m, line [35m359[0m, in [35mconfigure_sdk[0m
+    transport = make_transport(get_options(dsn=internal_project_key.dsn_private, **sdk_options))
+  File [35m"/.venv/lib/python3.13/site-packages/sentry_sdk/transport.py"[0m, line [35m1166[0m, in [35mmake_transport[0m
+    return transport_cls(options)
+  File [35m"/.venv/lib/python3.13/site-packages/sentry_sdk/transport.py"[0m, line [35m219[0m, in [35m__init__[0m
+    [31mTransport.__init__[0m[1;31m(self, options)[0m
+    [31m~~~~~~~~~~~~~~~~~~[0m[1;31m^^^^^^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/sentry_sdk/transport.py"[0m, line [35m110[0m, in [35m__init__[0m
+    self.parsed_dsn = [31mDsn[0m[1;31m(options["dsn"], options.get("org_id"))[0m
+                      [31m~~~[0m[1;31m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  File [35m"/.venv/lib/python3.13/site-packages/sentry_sdk/utils.py"[0m, line [35m349[0m, in [35m__init__[0m
+    if [1;31mparts.port[0m is None:
+       [1;31m^^^^^^^^^^[0m
+  File [35m"/usr/local/lib/python3.13/urllib/parse.py"[0m, line [35m182[0m, in [35mport[0m
+    raise ValueError(f"Port could not be cast to integer value as {port!r}")
+[1;35mValueError[0m: [35mPort could not be cast to integer value as '9000<script>alert("bright174677");<'[0m
+
+=== sentry-db-1 ===
+PostgreSQL Database directory appears to contain a database; Skipping initialization
+
+=== sentry-redis-1 ===
+1:C 07 Jun 2026 19:45:15.691 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+1:C 07 Jun 2026 19:45:15.691 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+1:C 07 Jun 2026 19:45:15.691 * Redis version=7.4.9, bits=64, commit=00000000, modified=0, pid=1, just started
+1:C 07 Jun 2026 19:45:15.691 * Configuration loaded
+1:M 07 Jun 2026 19:45:15.692 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+1:M 07 Jun 2026 19:45:15.692 * monotonic clock: POSIX clock_gettime
+1:M 07 Jun 2026 19:45:15.692 * Running mode=standalone, port=6379.
+1:M 07 Jun 2026 19:45:15.692 * Server initialized
+1:M 07 Jun 2026 19:45:15.692 * Reading RDB base file on AOF loading...
+1:M 07 Jun 2026 19:45:15.692 * Loading RDB produced by version 7.4.9
+1:M 07 Jun 2026 19:45:15.693 * RDB age 4659 seconds
+1:M 07 Jun 2026 19:45:15.693 * RDB memory usage when created 0.90 Mb
+1:M 07 Jun 2026 19:45:15.693 * RDB is base AOF
+1:M 07 Jun 2026 19:45:15.693 * Done loading RDB, keys loaded: 0, keys expired: 0.
+1:M 07 Jun 2026 19:45:15.693 * DB loaded from base file appendonly.aof.1.base.rdb: 0.000 seconds
+1:M 07 Jun 2026 19:45:16.017 * DB loaded from incr file appendonly.aof.1.incr.aof: 0.324 seconds
+1:M 07 Jun 2026 19:45:16.017 * DB loaded from append only file: 0.325 seconds
+1:M 07 Jun 2026 19:45:16.017 * Opening AOF incr file appendonly.aof.1.incr.aof on server start
+1:M 07 Jun 2026 19:45:16.017 * Ready to accept connections tcp

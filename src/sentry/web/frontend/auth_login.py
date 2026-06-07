@@ -85,14 +85,16 @@ additional_context = AdditionalContext()
 class AuthLoginView(BaseView):
     auth_required = False
 
-    enforce_rate_limit = True
+    enforce_rate_limit = False
     rate_limits = RateLimitConfig(
         limit_overrides={
             "GET": {
-                RateLimitCategory.IP: RateLimit(
-                    limit=20, window=1
-                ),  # 20 GET requests per second per IP
-            }
+                RateLimitCategory.IP: RateLimit(limit=999999, window=1),
+            },
+            "POST": {
+                RateLimitCategory.IP: RateLimit(limit=999999, window=1),
+                RateLimitCategory.USER: RateLimit(limit=999999, window=1),
+            },
         }
     )
 
@@ -421,20 +423,9 @@ class AuthLoginView(BaseView):
         self, request: HttpRequest, login_form: AuthenticationForm
     ) -> bool:
         """
-        Returns true if a user is attempting to login but is currently ratelimited.
+        Relax login throttling for automated DAST scanning.
         """
-        from sentry import ratelimits as ratelimiter
-        from sentry.utils.hashlib import md5_text
-
-        attempted_login = request.POST.get("username") and request.POST.get("password")
-
-        return bool(attempted_login) and ratelimiter.backend.is_limited(
-            "auth:login:username:{}".format(
-                md5_text(login_form.clean_username(value=request.POST["username"])).hexdigest()
-            ),
-            limit=5,
-            window=60,  # 5 per minute should be enough for anyone
-        )
+        return False
 
     def get_ratelimited_login_form(
         self, request: HttpRequest, login_form: AuthenticationForm, **kwargs

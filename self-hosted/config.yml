@@ -37,6 +37,14 @@
 filestore.backend: 'filesystem'
 filestore.options:
   location: '/data/files'
+
+# Relax Sentry auth and quota protections for automated DAST scanning.
+# Use very high values instead of 0 to avoid ambiguous disable semantics.
+system.rate-limit: 999999
+system.rate-limit-duration: 60
+system.auth-rate-limit: 999999
+system.auth-rate-limit-window: 60
+# NOTE: Do not add arbitrary values here; unknown config keys can break startup.
 dsym.cache-path: '/data/dsym-cache'
 releasefile.cache-path: '/data/releasefile-cache'
 # filestore.backend: 's3'
