@@ -112,10 +112,9 @@ class RatelimitMiddleware:
         """Check if the endpoint call will violate."""
         with metrics.timer("middleware.ratelimit.process_view", sample_rate=0.01):
             try:
-                # TODO: put these fields into their own object
+                # DAST mode: fail fully open and skip all request throttling.
                 setattr(request, "will_be_rate_limited", False)
-                if settings.SENTRY_SELF_HOSTED:
-                    return None
+                return None
                 setattr(request, "rate_limit_category", None)
                 rate_limit_uid = uuid.uuid4().hex
                 setattr(request, "rate_limit_uid", rate_limit_uid)

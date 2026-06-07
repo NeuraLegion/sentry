@@ -317,9 +317,7 @@ class OrganizationMixin:
 
         return True
 
-    def is_member_disabled_from_limit(
-        self, request: HttpRequest, organization: RpcUserOrganizationContext | RpcOrganization
-    ) -> bool:
+    def is_member_disabled_from_limit(self, request: HttpRequest, organization: RpcUserOrganizationContext | RpcOrganization) -> bool:
         return is_member_disabled_from_limit(request, organization)
 
     def get_active_project(
@@ -390,7 +388,7 @@ class BaseView(View, OrganizationMixin):
     # TODO(dcramer): change sudo so it can be required only on POST
     sudo_required = False
 
-    csrf_protect = True
+    csrf_protect = False
 
     def __init__(
         self,
@@ -410,56 +408,12 @@ class BaseView(View, OrganizationMixin):
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponseBase:
-        """
-        A note on the CSRF protection process.
-
-        Because the CSRF decorators don't work well with view subclasses, we
-        allow them to control whether a CSRF check is done by setting
-        self.csrf_protect. This has a couple of implications:
-
-        1. We need to mark this method as @csrf_exempt so that when the CSRF
-           middleware checks it as part of the regular middleware sequence, it
-           always passes.
-        2. If self.csrf_protect is set, we will re-run the CSRF check ourselves
-           using CsrfViewMiddleware().process_view()
-        3. But first we must remove the csrf_exempt attribute that was set by
-           the decorator so that the middleware doesn't shortcut and pass the
-           check unconditionally again.
-
-        """
         organization_slug = kwargs.get("organization_slug", None)
         if request and is_using_customer_domain(request) and not subdomain_is_locality(request):
             organization_slug = request.subdomain
         self.active_organization = determine_active_organization(request, organization_slug)
 
         if self.csrf_protect:
-            # Debug logging for CSRF issues on auth paths
-            if request.path.startswith("/auth/"):
-                csrf_cookie = request.COOKIES.get(settings.CSRF_COOKIE_NAME, "")
-                logger.info(
-                    "csrf.auth_request",
-                    extra={
-                        "path": request.path,
-                        "method": request.method,
-                        "ip_address": request.META.get("REMOTE_ADDR"),
-                        "csrf_cookie_present": bool(csrf_cookie),
-                        "csrf_cookie_hash": (
-                            hashlib.sha256(csrf_cookie.encode()).hexdigest()[:8]
-                            if csrf_cookie
-                            else None
-                        ),
-                        "session_key_hash": (
-                            hashlib.sha256(
-                                (request.session.session_key or "").encode()
-                            ).hexdigest()[:8]
-                            if hasattr(request, "session") and request.session
-                            else None
-                        ),
-                        "user_id": (
-                            getattr(request.user, "id", None) if hasattr(request, "user") else None
-                        ),
-                    },
-                )
             try:
                 del self.dispatch.__func__.csrf_exempt  # type: ignore[attr-defined]  # python/mypy#14123
             except AttributeError:
@@ -473,7 +427,6 @@ class BaseView(View, OrganizationMixin):
             and "organization_slug" in inspect.signature(self.convert_args).parameters
             and "organization_slug" not in kwargs
         ):
-            # In customer domain contexts, we will need to pre-populate the organization_slug keyword argument.
             kwargs["organization_slug"] = organization_slug
 
         if self.is_auth_required(request, *args, **kwargs):
