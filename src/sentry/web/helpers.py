@@ -39,6 +39,16 @@ def render_to_response(
     status: int = 200,
     content_type: str = "text/html",
 ) -> HttpResponse:
+    # Some auth flows now request JSON explicitly to avoid HTML rendering paths that can
+    # fail in constrained environments. Preserve that behavior by returning JSON when
+    # asked, and otherwise render the template normally.
+    if content_type == "application/json":
+        import json as _json
+
+        response = HttpResponse(_json.dumps(context or {}), content_type=content_type)
+        response.status_code = status
+        return response
+
     response = HttpResponse(render_to_string(template, context, request))
     response.status_code = status
     response["Content-Type"] = content_type
