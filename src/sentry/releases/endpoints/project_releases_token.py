@@ -55,15 +55,9 @@ class ProjectReleasesTokenEndpoint(ProjectEndpoint):
         if not self._has_project_write_access(request, project):
             return Response(status=404)
 
-        token = ProjectOption.objects.get_value(project, "sentry:release-token")
+        has_token = ProjectOption.objects.get_value(project, "sentry:release-token") is not None
 
-        if token is None:
-            # Block implicit token creation during impersonation. Return 404 not found instead of regenerating.
-            if getattr(request, "actual_user", None) is not None:
-                return Response(status=404)
-            token = self._regenerate_token(project)
-
-        return Response(status=204)
+        return Response({"hasToken": has_token})
 
     def post(self, request: Request, project) -> Response:
         if not self._has_project_write_access(request, project):
