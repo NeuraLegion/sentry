@@ -38,6 +38,12 @@ import os.path
 from sentry.conf.server import *
 from sentry.utils.types import Bool
 
+# DAST mode: disable CSRF validation and relax session/cookie restrictions for scanners.
+MIDDLEWARE = tuple(m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware")
+CSRF_TRUSTED_ORIGINS = ["http://localhost:9000", "http://127.0.0.1:9000"]
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 env = os.environ.get
 
 postgres = env("SENTRY_POSTGRES_HOST") or (env("POSTGRES_PORT_5432_TCP_ADDR") and "postgres")
@@ -126,8 +132,10 @@ SENTRY_CACHE = "sentry.cache.redis.RedisCache"
 
 # Rate limits apply to notification handlers and are enforced per-project
 # automatically.
+# DAST mode: keep backend valid but make limits effectively unbounded.
 
 SENTRY_RATELIMITER = "sentry.ratelimits.redis.RedisRateLimiter"
+SENTRY_IMPERSONATION_RATE_LIMIT = 999999
 
 ##################
 # Update Buffers #
@@ -175,6 +183,21 @@ SENTRY_DIGESTS = "sentry.digests.backends.redis.RedisBackend"
 # SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
+
+# DAST mode: make any request throttles effectively unbounded.
+SENTRY_OPTIONS["auth.login-rate-limit-ip"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-user"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-username"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-window"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-bucket-size"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-throttle"] = 999999
+SENTRY_OPTIONS["auth.login-rate-limit-methods"] = 999999
+SENTRY_OPTIONS["auth.recovery-code-rate-limit"] = 999999
+SENTRY_OPTIONS["auth.2fa-rate-limit"] = 999999
+SENTRY_OPTIONS["api.rate-limit"] = 999999
+SENTRY_OPTIONS["api.rate-limit-window"] = 999999
+SENTRY_OPTIONS["system.rate-limit"] = 999999
+SENTRY_OPTIONS["system.rate-limit-window"] = 999999
 
 SENTRY_WEB_HOST = "0.0.0.0"
 SENTRY_WEB_PORT = 9000

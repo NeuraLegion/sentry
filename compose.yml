@@ -1,0 +1,20 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.bright
+    ports:
+      - "9000:9000"
+    environment:
+      NODE_ENV: "production"
+      SENTRY_CONF: "/etc/sentry"
+      SENTRY_POSTGRES_HOST: "postgres"
+      SENTRY_POSTGRES_PORT: "5432"
+      SENTRY_DB_NAME: "postgres"
+      SENTRY_DB_USER: "postgres"
+      SENTRY_DB_PASSWORD: "postgres"
+      SENTRY_REDIS_HOST: "redis"
+      SENTRY_REDIS_PORT: "6379"
+      SENTRY_SECRET_KEY: "changemechangemechangemechangemechangemechangeme"
+      SENTRY_SINGLE_ORGANIZATION: "true"
+      SENTRY_SERVER_EMAIL: "root@localhost"

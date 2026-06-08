@@ -12,6 +12,9 @@ if not settings.configured:
 
     configure()
 
+# DAST mode: remove CSRF middleware so scanners can POST auth requests without tokens.
+settings.MIDDLEWARE = tuple(m for m in settings.MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware")
+
 from django.core.handlers.asgi import ASGIHandler
 
 # Run ASGI handler for the application

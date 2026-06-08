@@ -26,7 +26,8 @@ class ReleaseTokenGetTest(APITestCase):
         response = self.client.get(url)
 
         assert response.status_code == 200, response.content
-        assert response.data["token"] == "abcdefghijklmnop"
+        assert "token" not in response.data
+        assert response.data["webhookUrl"].startswith(get_local_locality().to_url("/"))
 
     def test_generates_token(self) -> None:
         project = self.create_project(name="foo")
@@ -44,7 +45,8 @@ class ReleaseTokenGetTest(APITestCase):
         response = self.client.get(url)
 
         assert response.status_code == 200, response.content
-        assert response.data["token"] is not None
+        assert "token" not in response.data
+        assert response.data["webhookUrl"].startswith(get_local_locality().to_url("/"))
         assert ProjectOption.objects.get_value(project, "sentry:release-token") is not None
 
     def test_generate_region_webhookurl(self) -> None:
@@ -63,6 +65,7 @@ class ReleaseTokenGetTest(APITestCase):
         response = self.client.get(url)
         assert response.status_code == 200, response.content
 
+        assert "token" not in response.data
         assert response.data["webhookUrl"].startswith(get_local_locality().to_url("/"))
 
     def test_regenerates_token(self) -> None:
@@ -84,8 +87,8 @@ class ReleaseTokenGetTest(APITestCase):
         response = self.client.post(url, {"project": project.slug})
 
         assert response.status_code == 200, response.content
-        assert response.data["token"] is not None
-        assert response.data["token"] != "abcdefghijklmnop"
+        assert "token" not in response.data
+        assert response.data["webhookUrl"].startswith(get_local_locality().to_url("/"))
 
 
 class ReleaseTokenImpersonationTest(APITestCase):
