@@ -17,7 +17,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SENTRY_CONF=/etc/sentry \
     GRPC_POLL_STRATEGY=epoll1 \
     MAKEFLAGS="-j$(nproc)" \
-    CARGO_BUILD_JOBS="$(nproc)"
+    CARGO_BUILD_JOBS="$(nproc)" \
+    XDG_CACHE_HOME=/tmp/.cache
 
 WORKDIR /usr/src/sentry
 

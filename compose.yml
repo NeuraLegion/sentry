@@ -18,3 +18,4 @@ services:
       SENTRY_SECRET_KEY: "changemechangemechangemechangemechangemechangeme"
       SENTRY_SINGLE_ORGANIZATION: "true"
       SENTRY_SERVER_EMAIL: "root@localhost"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres"
