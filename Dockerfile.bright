@@ -61,8 +61,11 @@ RUN python3 -m venv /.venv
 # Copy dependency manifests first for layer caching
 COPY pyproject.toml uv.lock package.json pnpm-lock.yaml ./
 
-# Install Python dependencies from local lockfile/source metadata
-RUN uv sync --frozen --no-install-project
+# Install Python dependencies from local lockfile/source metadata.
+# This repository's uv lockfile resolves against Sentry's internal package index,
+# which is not reachable in a clean first build environment, so install from the
+# lockfile without index access.
+RUN uv sync --frozen --no-install-project --no-config
 
 # Install Node.js for frontend build
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
