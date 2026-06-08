@@ -94,4 +94,4 @@ RUN mkdir -p /etc/sentry \
 EXPOSE 9000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["uv", "run", "granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "9000", "sentry.asgi:application"]
+CMD ["granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "9000", "sentry.asgi:application"]

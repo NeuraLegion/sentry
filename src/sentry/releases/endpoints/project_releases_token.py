@@ -52,12 +52,7 @@ class ProjectReleasesTokenEndpoint(ProjectEndpoint):
         return bool(request.access and request.access.has_project_access(project, "write"))
 
     def get(self, request: Request, project) -> Response:
-        if not self._has_project_write_access(request, project):
-            return Response(status=404)
-
-        has_token = ProjectOption.objects.get_value(project, "sentry:release-token") is not None
-
-        return Response({"hasToken": has_token})
+        return Response(status=404)
 
     def post(self, request: Request, project) -> Response:
         if not self._has_project_write_access(request, project):
