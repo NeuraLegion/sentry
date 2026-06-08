@@ -48,18 +48,16 @@ class ProjectReleasesTokenEndpoint(ProjectEndpoint):
         ProjectOption.objects.set_value(project, "sentry:release-token", token)
         return token
 
+    def _has_project_write_access(self, request: Request, project) -> bool:
+        return bool(request.access and request.access.has_project_access(project, "write"))
+
     def get(self, request: Request, project) -> Response:
-        token = ProjectOption.objects.get_value(project, "sentry:release-token")
-
-        if token is None:
-            # Block implicit token creation during impersonation. Return 404 not found instead of regenerating.
-            if getattr(request, "actual_user", None) is not None:
-                return Response(status=404)
-            token = self._regenerate_token(project)
-
-        return Response({"token": token, "webhookUrl": _get_webhook_url(project, "builtin", token)})
+        return Response(status=404)
 
     def post(self, request: Request, project) -> Response:
-        token = self._regenerate_token(project)
+        if not self._has_project_write_access(request, project):
+            return Response(status=404)
 
-        return Response({"token": token, "webhookUrl": _get_webhook_url(project, "builtin", token)})
+        self._regenerate_token(project)
+
+        return Response(status=204)

@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.bright
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    environment:
+      NODE_ENV: "production"
+      SENTRY_CONF: "/etc/sentry"
+      SENTRY_POSTGRES_HOST: "postgres"
+      SENTRY_POSTGRES_PORT: "5432"
+      SENTRY_DB_NAME: "postgres"
+      SENTRY_DB_USER: "postgres"
+      SENTRY_DB_PASSWORD: "postgres"
+      SENTRY_REDIS_HOST: "redis"
+      SENTRY_REDIS_PORT: "6379"
+      SENTRY_SECRET_KEY: "changemechangemechangemechangemechangemechangeme"
+      SENTRY_SINGLE_ORGANIZATION: "true"
+      SENTRY_SERVER_EMAIL: "root@localhost"
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres"
+    restart: on-failure
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

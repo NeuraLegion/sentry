@@ -1,0 +1,55 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.bright
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SENTRY_CONF: /etc/sentry
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_POSTGRES_PORT: "5432"
+      SENTRY_DB_NAME: postgres
+      SENTRY_DB_USER: postgres
+      SENTRY_DB_PASSWORD: postgres
+      SENTRY_REDIS_HOST: redis
+      SENTRY_REDIS_PORT: "6379"
+      SENTRY_SECRET_KEY: changemechangemechangemechangemechangemechangeme
+      SENTRY_SINGLE_ORGANIZATION: "true"
+      SENTRY_SERVER_EMAIL: root@localhost
+    ports:
+      - "9000:9000"
+    command: ["uv", "run", "granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "9000", "sentry.asgi:application"]
+
+volumes:
+  redis-data:
+  postgres-data:

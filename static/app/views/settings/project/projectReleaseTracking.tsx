@@ -26,17 +26,10 @@ import {useOrganization} from 'sentry/utils/useOrganization';
 import {SettingsPageHeader} from 'sentry/views/settings/components/settingsPageHeader';
 import {useProjectSettingsOutlet} from 'sentry/views/settings/project/projectSettingsLayout';
 
-type TokenResponse = {
-  token: string;
-  webhookUrl: string;
-};
+type TokenResponse = Record<string, never>;
 
-const TOKEN_PLACEHOLDER = 'YOUR_TOKEN';
-const WEBHOOK_PLACEHOLDER = 'YOUR_WEBHOOK_URL';
-const placeholderData = {
-  token: TOKEN_PLACEHOLDER,
-  webhookUrl: WEBHOOK_PLACEHOLDER,
-};
+const WEBHOOK_PLACEHOLDER = 'Webhook URL is no longer returned by the API';
+const placeholderData = {};
 
 function getReleaseTokenQueryKey(
   organizationSlug: string,
@@ -104,7 +97,7 @@ export default function ProjectReleaseTracking() {
   function getReleaseWebhookInstructions() {
     return (
       'curl ' +
-      releaseTokenData?.webhookUrl +
+      WEBHOOK_PLACEHOLDER +
       ' \\' +
       '\n  ' +
       '-X POST \\' +
@@ -138,15 +131,13 @@ export default function ProjectReleaseTracking() {
         )}
       />
 
-      {!hasWrite && (
-        <Alert.Container>
-          <Alert variant="warning" showIcon={false}>
-            {t(
-              'You do not have sufficient permissions to access Release tokens, placeholders are displayed below.'
-            )}
-          </Alert>
-        </Alert.Container>
-      )}
+      <Alert.Container>
+        <Alert variant="warning" showIcon={false}>
+          {t(
+            'Release token secrets and webhook URLs are no longer returned by this API. Use the regenerate action to rotate the server-side secret if needed.'
+          )}
+        </Alert>
+      </Alert.Container>
 
       <FormFieldGroup title={t('Client Configuration')}>
         <Stack gap="xl">
@@ -177,10 +168,10 @@ export default function ProjectReleaseTracking() {
       <FormFieldGroup title={t('Deploy Token')}>
         <FieldGroup
           label={t('Token')}
-          help={t('A unique secret which is used to generate deploy hook URLs')}
+          help={t('A unique secret is stored server-side and used to generate deploy hook URLs')}
           hideControlState
         >
-          <TextCopyInput aria-label={t('Token')}>{releaseTokenData.token}</TextCopyInput>
+          <TextCopyInput aria-label={t('Token')}>{t('Hidden for security')}</TextCopyInput>
         </FieldGroup>
 
         <FieldGroup
@@ -215,7 +206,7 @@ export default function ProjectReleaseTracking() {
           hideControlState
         >
           <TextCopyInput aria-label={t('Webhook URL')}>
-            {releaseTokenData.webhookUrl}
+            {WEBHOOK_PLACEHOLDER}
           </TextCopyInput>
         </FieldGroup>
 
