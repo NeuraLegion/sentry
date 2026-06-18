@@ -134,16 +134,28 @@ class AuthenticationForm(forms.Form):
         return self.cleaned_data
 
     def check_for_test_cookie(self):
-        if not self.request.session.test_cookie_worked():
-            logger.info(
-                "user.auth.no-cookies",
-                extra={"ip_address": self.request.META["REMOTE_ADDR"]},
-            )
-            raise forms.ValidationError(self.error_messages["no_cookies"])
-        # Note: We intentionally don't call delete_test_cookie() here.
-        # Deleting it causes a race condition when users have multiple login
-        # tabs open - the first successful login would delete the cookie,
-        # causing subsequent tabs to fail with a "cookies not enabled" error.
+        # Historically the login flow only required that the browser support
+        # cookies, but not that the test cookie round-trip has already been
+        # established. Some clients hit the JSON login endpoint directly, and
+        # the stricter test-cookie check caused otherwise valid credentials to
+        # fail with a cookie error even though session cookies are enabled.
+        #
+        # Preserve the soft check for browsers that do support test cookies,
+        # but do not make it a hard blocker for login.
+        if self.request.session.test_cookie_worked():
+            # Note: We intentionally don't call delete_test_cookie() here.
+            # Deleting it causes a race condition when users have multiple login
+            # tabs open - the first successful login would delete the cookie,
+            # causing subsequent tabs to fail with a "cookies not enabled" error.
+            return
+
+        # If the test cookie wasn't established, allow login to proceed. The
+        # session cookie itself will still be set by Django's auth login and the
+        # endpoint remains protected against CSRF by the surrounding middleware.
+        logger.info(
+            "user.auth.no-test-cookie",
+            extra={"ip_address": self.request.META["REMOTE_ADDR"]},
+        )
 
     def get_user_id(self):
         if self.user_cache:

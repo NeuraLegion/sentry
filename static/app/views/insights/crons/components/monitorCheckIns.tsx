@@ -39,7 +39,10 @@ export function MonitorCheckIns({monitorSlug, monitorEnvs, project}: Props) {
       limit: PER_PAGE,
       expand: 'groups',
       environment: monitorEnvs.map(e => e.name),
-      queryParams: {...location.query},
+      cursor: typeof location.query.cursor === 'string' ? location.query.cursor : undefined,
+      query: typeof location.query.query === 'string' ? location.query.query : undefined,
+      sort: typeof location.query.sort === 'string' ? location.query.sort : undefined,
+      asc: typeof location.query.asc === 'string' ? location.query.asc : undefined,
     }),
     select: selectJsonWithHeaders,
   });

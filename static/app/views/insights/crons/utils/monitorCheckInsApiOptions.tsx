@@ -9,8 +9,10 @@ interface MonitorChecksParameters {
   environment?: string[];
   expand?: 'groups';
   limit?: number;
-  // Allows passing in arbitrary location query params
-  queryParams?: Record<string, string | string[] | null | undefined>;
+  query?: string;
+  sort?: string;
+  asc?: string;
+  // Only allow explicitly forwarded pagination/filter params.
 }
 
 export function monitorCheckInsApiOptions({
@@ -21,7 +23,9 @@ export function monitorCheckInsApiOptions({
   limit,
   environment,
   expand,
-  queryParams,
+  query,
+  sort,
+  asc,
 }: MonitorChecksParameters) {
   return apiOptions.as<CheckIn[]>()(
     '/projects/$organizationIdOrSlug/$projectIdOrSlug/monitors/$monitorIdOrSlug/checkins/',
@@ -31,7 +35,7 @@ export function monitorCheckInsApiOptions({
         projectIdOrSlug: projectSlug,
         monitorIdOrSlug,
       },
-      query: {per_page: limit, cursor, environment, expand, ...queryParams},
+      query: {per_page: limit, cursor, environment, expand, query, sort, asc},
       staleTime: 0,
     }
   );

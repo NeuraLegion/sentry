@@ -1,0 +1,106 @@
+FROM python:3.13.1-slim-bookworm
+
+LABEL maintainer="oss@sentry.io"
+LABEL org.opencontainers.image.title="Sentry"
+LABEL org.opencontainers.image.description="Sentry runtime image for production-like DAST testing"
+LABEL org.opencontainers.image.url="https://sentry.io/"
+LABEL org.opencontainers.image.documentation="https://develop.sentry.dev/self-hosted/"
+LABEL org.opencontainers.image.vendor="Functional Software, Inc."
+LABEL org.opencontainers.image.authors="oss@sentry.io"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_NO_CACHE=1 \
+    UV_PROJECT_ENVIRONMENT=/.venv \
+    SENTRY_CONF=/etc/sentry \
+    NODE_ENV=production \
+    GRPC_POLL_STRATEGY=epoll1 \
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    PATH="/.venv/bin:/usr/local/bin:${PATH}"
+
+WORKDIR /usr/src/sentry
+
+RUN groupadd -r sentry --gid 999 && useradd -r -m -g sentry --uid 999 sentry
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates \
+      curl \
+      git \
+      gosu \
+      tini \
+      libexpat1 \
+      gcc \
+      g++ \
+      make \
+      pkg-config \
+      libpcre2-dev \
+      zlib1g-dev \
+      libffi-dev \
+      libssl-dev \
+      libjpeg62-turbo-dev \
+      libxml2-dev \
+      libxslt1-dev \
+      libpq-dev \
+      libmaxminddb-dev \
+      shared-mime-info \
+      imagemagick \
+      libmagickwand-dev \
+      ffmpeg \
+      wkhtmltopdf \
+      ghostscript \
+      poppler-utils \
+      brotli \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --index-url 'https://pypi.devinfra.sentry.io/simple' 'uv==0.9.28'
+RUN python3 -m venv /.venv
+
+# Debian bookworm ships Node 18, but this frontend build loads rspack.config.ts
+# directly and requires a newer Node runtime with native TS module support.
+COPY --from=node:22-bookworm-slim /usr/local/ /usr/local/
+RUN npm install -g pnpm@10.30.2
+
+COPY pyproject.toml uv.lock package.json pnpm-lock.yaml .npmrc setup.cfg ./
+COPY patches ./patches
+
+RUN uv sync --frozen --quiet --no-install-project
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+RUN set -eux; \
+    sed -i "s/host: 127.0.0.1/host: db/" src/sentry/data/config/sentry.conf.py.default || true; \
+    sed -i "s/host: 127.0.0.1/host: redis/" src/sentry/data/config/config.yml.default || true; \
+    sed -i "s/host: 127.0.0.1/host: db/" self-hosted/sentry.conf.py || true; \
+    sed -i "s/host: 127.0.0.1/host: redis/" self-hosted/config.yml || true
+
+RUN mkdir -p "$SENTRY_CONF"
+COPY ./self-hosted/sentry.conf.py ./self-hosted/config.yml $SENTRY_CONF/
+COPY ./self-hosted/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+RUN python3 -m tools.fast_editable --path . \
+ && python3 -m compileall -q src/ \
+ && python3 -c 'import maxminddb.extension; maxminddb.extension.Reader' \
+ && sentry help | sed '1,/Commands:/d' | awk '{print $1}' > /sentry-commands.txt
+
+RUN NODE_ENV=production pnpm run build-production
+
+RUN test -f /usr/src/sentry/src/sentry/static/sentry/dist/entrypoints/app.js \
+ || test -f /usr/src/sentry/static/sentry/dist/entrypoints/app.js
+
+EXPOSE 9000
+VOLUME ["/data"]
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["run", "web"]
+
+ARG SOURCE_COMMIT
+ENV SENTRY_BUILD=${SOURCE_COMMIT:-unknown}
+LABEL org.opencontainers.image.revision=$SOURCE_COMMIT
+LABEL org.opencontainers.image.source="https://github.com/getsentry/sentry/tree/${SOURCE_COMMIT:-master}/"
+LABEL org.opencontainers.image.licenses="https://github.com/getsentry/sentry/blob/${SOURCE_COMMIT:-master}/LICENSE"

@@ -150,8 +150,22 @@ class SelectRequester:
                 status_code=500,
             )
 
+        parsed_uri = urlparse(self.uri)
+        if parsed_uri.scheme or parsed_uri.netloc or not parsed_uri.path.startswith("/") or ".." in parsed_uri.path:
+            raise SentryAppIntegratorError(
+                message="Invalid uri configured for Select FormField external request",
+                webhook_context={
+                    "error_type": FAILURE_REASON_BASE.format(
+                        SentryAppExternalRequestFailureReason.MISSING_URL
+                    ),
+                    "sentry_app_slug": self.sentry_app.slug,
+                    "uri": self.uri,
+                },
+                status_code=400,
+            )
+
         urlparts: list[str] = [url_part for url_part in urlparse(self.sentry_app.webhook_url)]
-        urlparts[2] = self.uri
+        urlparts[2] = parsed_uri.path
 
         query = {"installationId": self.install.uuid}
 

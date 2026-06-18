@@ -78,12 +78,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_query_columns(columns: list[str], rollup: int) -> list[str]:
-    """
-    Backwards compatibility for incidents which uses the old
-    column aliases as it straddles both versions of events/discover.
-    We will need these aliases until discover2 flags are enabled for all users.
-    We need these rollup columns to generate correct events-stats results
-    """
     column_map = {
         "user_count": "count_unique(user)",
         "event_count": "count()",
@@ -101,7 +95,6 @@ def resolve_axis_column(
     if is_equation(column) and not use_rpc:
         return f"equation[{index}]"
 
-    # Function columns on input have names like `"p95(duration)"`. By default, we convert them to their aliases like `"p95_duration"`. Here, we want to preserve the original name, so we return the column as-is
     if transform_alias_to_input_format:
         return column
 
@@ -110,6 +103,40 @@ def resolve_axis_column(
 
 class OrganizationEventsEndpointBase(OrganizationEndpoint):
     owner = ApiOwner.DATA_BROWSING
+
+    SAFE_EVENT_FIELDS: frozenset[str] = frozenset(
+        {
+            "event_id",
+            "title",
+            "transaction",
+            "timestamp",
+            "project",
+            "project.id",
+            "project.name",
+            "issue",
+            "issue.id",
+            "message",
+            "level",
+            "platform",
+            "environment",
+            "user",
+            "user.id",
+            "user.email",
+            "user.ip",
+            "device",
+            "release",
+            "dist",
+            "culprit",
+            "location",
+            "sdk.name",
+            "sdk.version",
+            "transaction.status",
+            "status",
+            "duration",
+            "count()",
+            "count_unique(user)",
+        }
+    )
 
     def has_feature(self, organization: Organization, request: Request) -> bool:
         return (
@@ -125,17 +152,28 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
     def get_equation_list(
         self, organization: Organization, request: Request, param_name: str = "field"
     ) -> list[str]:
-        """equations have a prefix so that they can be easily included alongside our existing fields"""
         return [
             strip_equation(field)
-            for field in request.GET.getlist(param_name)[:]
+            for field in self.get_field_list(organization, request, param_name=param_name)
             if is_equation(field)
         ]
 
     def get_field_list(
         self, organization: Organization, request: Request, param_name: str = "field"
     ) -> list[str]:
-        return [field for field in request.GET.getlist(param_name)[:] if not is_equation(field)]
+        requested_fields = request.GET.getlist(param_name)[:]
+        allowed_fields: list[str] = []
+
+        for field in requested_fields:
+            if is_equation(field):
+                continue
+
+            if field not in self.SAFE_EVENT_FIELDS:
+                raise ParseError(detail=f"field `{field}` is not supported")
+
+            allowed_fields.append(field)
+
+        return allowed_fields
 
     def get_teams(self, request: Request, organization: Organization) -> list[Team]:
         if not request.user:
@@ -149,7 +187,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
 
     def get_dataset(self, request: Request, organization: Organization) -> Any:
         dataset_label = request.GET.get("dataset", Dataset.Discover.value)
-        # Feature flag the occurrence endpoint
         if (
             dataset_label == SupportedTraceItemType.OCCURRENCES.value
             and not EAPOccurrencesComparator.should_use_experimental_data("api.events.endpoints")
@@ -171,7 +208,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         organization: Organization,
         quantize_date_params: bool = True,
     ) -> SnubaParams:
-        """Returns params to make snuba queries with"""
         with sentry_sdk.start_span(op="discover.endpoint", name="filter_params(dataclass)"):
             if (
                 len(self.get_field_list(organization, request))
@@ -214,8 +250,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         sort = request.GET.getlist("sort")
         if sort:
             return sort
-        # Deprecated. `sort` should be used as it is supported by
-        # more endpoints.
         orderby = request.GET.getlist("orderby")
         if orderby:
             return orderby
@@ -224,12 +258,10 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
     def quantize_date_params(
         self, request: Request, params: FilterParamsDateNotNull
     ) -> FilterParamsDateNotNull:
-        # We only need to perform this rounding on relative date periods
         if "statsPeriod" not in request.GET:
             return params
         results = params.copy()
         duration = params["end"] - params["start"]
-        # Only perform rounding on durations longer than an hour
         if duration > timedelta(hours=1):
             minutes = 3 if duration >= timedelta(days=30) else 1
             round_to = int(timedelta(minutes=minutes).total_seconds())
@@ -245,8 +277,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         return results
 
     def build_cursor_link(self, request: HttpRequest, name: str, cursor: Cursor | None) -> str:
-        # The base API function only uses the last query parameter, but this endpoint
-        # needs all the parameters, particularly for the "field" query param.
         querystring = "&".join(
             f"{urlquote(query[0])}={urlquote(value)}"
             for query in request.GET.lists()
@@ -284,7 +314,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         organization: Organization,
         user: User | AnonymousUser,
     ) -> int | None:
-        """This can be removed once the discover dataset has been fully split"""
         source = DashboardDatasetSourcesTypes.INFERRED.value
         if has_errors and not has_transactions_data:
             decision = DashboardWidgetTypes.ERROR_EVENTS
@@ -293,7 +322,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
             decision = DashboardWidgetTypes.TRANSACTION_LIKE
             sentry_sdk.set_tag("discover.split_reason", "query_result")
         else:
-            # In the case that neither side has data, or both sides have data, default to errors.
             decision = DashboardWidgetTypes.ERROR_EVENTS
             source = DashboardDatasetSourcesTypes.FORCED.value
             sentry_sdk.set_tag("discover.split_reason", "default")
@@ -313,11 +341,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         has_errors: bool,
         has_transactions_data: bool,
     ) -> int | None:
-        """
-        This can be removed once the discover dataset has been fully split.
-        If dataset is ambiguous (i.e., could be either transactions or errors),
-        default to errors.
-        """
         dataset_source = DatasetSourcesTypes.INFERRED.value
         if dataset_inferred_from_query is not None:
             decision = dataset_inferred_from_query
@@ -329,8 +352,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
             decision = DiscoverSavedQueryTypes.TRANSACTION_LIKE
             sentry_sdk.set_tag("discover.split_reason", "query_result")
         else:
-            # In the case that neither or both datasets return data,
-            # default to Errors.
             decision = DiscoverSavedQueryTypes.ERROR_EVENTS
             dataset_source = DatasetSourcesTypes.FORCED.value
             sentry_sdk.set_tag("discover.split_reason", "default")
@@ -353,11 +374,9 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         return meta, units
 
     def _get_rate_unit(self, field: str) -> str | None:
-        """Get the rate unit for a field by checking for known rate functions."""
         per_second_fns = {"eps", "sps", "tps", "sample_eps", "per_second", "per_second_if"}
         per_minute_fns = {"epm", "spm", "tpm", "sample_epm", "per_minute", "per_minute_if"}
 
-        # For equation fields, check if any known rate function appears in the expression
         if is_equation(field):
             _, _, functions = parse_arithmetic(strip_equation(field))
             for function in functions:
@@ -394,7 +413,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         elif field_type == "duration":
             return "millisecond", field_type
         else:
-            # There's no unit for integers for example
             return None, field_type
 
     def handle_results_with_meta(
@@ -408,7 +426,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
     ) -> dict[str, Any]:
         with sentry_sdk.start_span(op="discover.endpoint", name="base.handle_results"):
             data = self.handle_data(request, organization, project_ids, results.get("data"))
-            # these may get re-used by other timeseries
             meta = results.get("meta", {}).copy()
             fields_meta = meta.get("fields", {}).copy()
 
@@ -437,13 +454,11 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
                 if full_scan is not None:
                     meta["dataScanned"] = "full" if full_scan else "partial"
                 else:
-                    # If this key isn't in meta there wasn't any sampling and we can assume all the data was scanned
                     meta["dataScanned"] = "full"
 
                 if bytes_scanned is not None:
                     meta["bytesScanned"] = bytes_scanned
 
-                # Only appears in meta when debug is passed to the endpoint
                 if debug_info:
                     meta["debug_info"] = debug_info
             else:
@@ -458,7 +473,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
                 meta["accuracy"] = {
                     "confidence": results["confidence"],
                 }
-                # Confidence being a top level key is going to be deprecated in favour of confidence being in the meta
                 return {"data": data, "meta": meta, "confidence": results["confidence"]}
             return {"data": data, "meta": meta}
 
@@ -482,7 +496,7 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
                     )
 
         fields = self.get_field_list(organization, request)
-        if "issue" in fields:  # Look up the short ID and return that in the results
+        if "issue" in fields:
             self.handle_issues(results, project_ids, organization)
 
         if "device" in fields and request.GET.get("readable"):
@@ -499,11 +513,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         return results
 
     def handle_error_upsampling(self, project_ids: Sequence[int], results: dict[str, Any]) -> None:
-        """
-        If the query is for error upsampled projects, we convert various functions under the hood.
-        We need to rename these fields before returning the results to the client, to hide the conversion.
-        This is done here to work around a limitation in how aliases are handled in the SnQL parser.
-        """
         if are_any_projects_error_upsampled(project_ids):
             data = results.get("data", [])
             fields_meta = results.get("meta", {}).get("fields", {})
@@ -540,7 +549,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         top_events: int,
         use_rpc: bool,
     ) -> int:
-        """TODO: we should eventually rely on `SnubaParams.granularity_secs` instead"""
         try:
             rollup = get_rollup_from_request(
                 request,
@@ -550,9 +558,7 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
                 top_events=top_events,
                 allow_interval_over_range=not use_rpc,
             )
-        # If the user sends an invalid interval, use the default instead
         except InvalidSearchQuery:
-            # on RPC don't use default interval on error
             if use_rpc:
                 raise
             sentry_sdk.set_tag("user.invalid_interval", request.GET.get("interval"))
@@ -605,7 +611,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         with handle_query_errors():
             with sentry_sdk.start_span(op="discover.endpoint", name="base.stats_query_creation"):
                 _columns = [query_column]
-                # temporary change to make topN query work for multi-axes requests
                 if additional_query_columns is not None:
                     _columns.extend(additional_query_columns)
 
@@ -615,7 +620,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
                     query = request.GET.get("query", "")
                 if snuba_params is None:
                     try:
-                        # events-stats is still used by events v1 which doesn't require global views
                         snuba_params = self.get_snuba_params(request, organization)
                     except NoProjects:
                         return {"data": []}
@@ -642,9 +646,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         serializer = SnubaTSResultSerializer(organization, None, request.user)
 
         with sentry_sdk.start_span(op="discover.endpoint", name="base.stats_serialization"):
-            # When the request is for top_events, result can be a SnubaTSResult in the event that
-            # there were no top events found. In this case, result contains a zerofilled series
-            # that acts as a placeholder.
             is_multiple_axis = len(query_columns) > 1
             if isinstance(result, dict):
                 results = {}
@@ -744,7 +745,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         ret_value = False
         try:
             for c in query_columns:
-                # At least one of the columns has required extracted data
                 if results[key][c].get("meta", {}).get("isMetricsExtractedData"):
                     ret_value = True
                     break
@@ -768,7 +768,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
         transform_alias_to_input_format: bool = False,
         use_rpc: bool = False,
     ) -> dict[str, Any]:
-        # Return with requested yAxis as the key
         result = {}
         equations = 0
         meta = self.handle_results_with_meta(
@@ -794,7 +793,6 @@ class OrganizationEventsEndpointBase(OrganizationEndpoint):
             column_meta = meta.copy()
             self.update_meta_with_accuracy(column_meta, event_result, query_column)
             result[columns[index]]["meta"] = column_meta
-        # Set order if multi-axis + top events
         if "order" in event_result.data:
             result["order"] = event_result.data["order"]
 

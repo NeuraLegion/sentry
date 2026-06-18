@@ -18,7 +18,7 @@
       // Default to `.theme-system` and replace with user theme as soon as possible.
       const BOOTSTRAP_URL = '/api/client-config/';
       async function applySpaTheme() {
-        const res = await fetch(BOOTSTRAP_URL);
+        const res = await fetch(BOOTSTRAP_URL, {credentials: 'include'});
         if (res.ok) {
           const data = await res.json();
           const theme = data.user?.options?.theme;
@@ -526,13 +526,5 @@
         })();
       </script>
     </div>
-
-    <% if (htmlWebpackPlugin.options.window) { %>
-    <script>
-      <% for (var varName in htmlWebpackPlugin.options.window) { %>
-          window['<%=varName%>'] = <%= JSON.stringify(htmlWebpackPlugin.options.window[varName]) %>;
-        <% } %>
-    </script>
-    <% } %>
   </body>
 </html>
